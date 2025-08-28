@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: b6fd17fb63b3b86448885d98b6627d13
+timeCreated: 1538910040
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 130909
+  packageName: Stylized Customizable Cars (post apo v1)
+  packageVersion: 1.0
+  assetPath: Assets/Customizable_cars_pack_style1/Models/Weapon/Weapon_v1/Source/Weapon_v1.mat
+  uploadId: 327951

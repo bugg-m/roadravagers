@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 691324df32cedb54faa2701c23885316
+timeCreated: 1538907744
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 130909
+  packageName: Stylized Customizable Cars (post apo v1)
+  packageVersion: 1.0
+  assetPath: Assets/Customizable_cars_pack_style1/Models/Car_attachments/Projector_v1/Projector_v1.prefab
+  uploadId: 327951

@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 1e90d25aeee3f564dba6cf889a4af470
+timeCreated: 1538894929
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 130909
+  packageName: Stylized Customizable Cars (post apo v1)
+  packageVersion: 1.0
+  assetPath: Assets/Customizable_cars_pack_style1/Models/Tires/Tire_v3/Source/Tire_v3.mat
+  uploadId: 327951

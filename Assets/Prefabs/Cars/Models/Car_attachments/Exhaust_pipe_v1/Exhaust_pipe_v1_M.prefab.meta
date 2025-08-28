@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: a959df6582e8c4e49bcff93573c8797d
+timeCreated: 1539490987
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 100100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 130909
+  packageName: Stylized Customizable Cars (post apo v1)
+  packageVersion: 1.0
+  assetPath: Assets/Customizable_cars_pack_style1/Models/Car_attachments/Exhaust_pipe_v1/Exhaust_pipe_v1_M.prefab
+  uploadId: 327951

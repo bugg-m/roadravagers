@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 012f21b0282b38147b71bd5ed0c02b97
+timeCreated: 1538907325
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 130909
+  packageName: Stylized Customizable Cars (post apo v1)
+  packageVersion: 1.0
+  assetPath: Assets/Customizable_cars_pack_style1/Models/Car_attachments/Winch_v1/Source/Winch_v1.mat
+  uploadId: 327951

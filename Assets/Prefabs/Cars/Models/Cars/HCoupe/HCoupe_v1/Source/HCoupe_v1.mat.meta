@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 0e6f027596e6089469ee18aa2128e9c7
+timeCreated: 1538887522
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 130909
+  packageName: Stylized Customizable Cars (post apo v1)
+  packageVersion: 1.0
+  assetPath: Assets/Customizable_cars_pack_style1/Models/Cars/HCoupe/HCoupe_v1/Source/HCoupe_v1.mat
+  uploadId: 327951
