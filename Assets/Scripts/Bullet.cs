@@ -2,62 +2,68 @@ using UnityEngine;
 
 public class Bullet : MonoBehaviour
 {
-    public float speed = 40f;
-    public int damage = 1;
-    public float lifeTime = 4f;
-    public string OwnerTag = "Player"; // set by spawner: "Player" or "Turret"
+    [Header("Bullet Properties")]
+    [SerializeField] private float speed = 50f;
+    [SerializeField] private float damage = 25f;
+    [SerializeField] private float lifeTime = 5f;
 
-    Rigidbody rb;
+    [Header("Visual Effects")]
+    [SerializeField] private GameObject impactEffect;
+
+    private string ownerTag = "Player";
+    private Rigidbody bulletRigidbody;
+    private bool hasHit = false;
 
     void Start()
     {
-        rb = GetComponent<Rigidbody>();
-        if (rb != null)
-        {
-            rb.useGravity = false;
-            // if kinematic, we may move transform directly; if dynamic, set velocity
-            if (!rb.isKinematic)
-            {
-                rb.linearVelocity = transform.forward * speed;
-            }
-        }
-        // if using kinematic rigidbody or no rigidbody, move in Update
-        Destroy(gameObject, lifeTime);
-    }
+        bulletRigidbody = GetComponent<Rigidbody>();
 
-    void Update()
-    {
-        // if kinematic or no rigidbody, move manually
-        if (rb == null || rb.isKinematic)
+        if (bulletRigidbody != null)
         {
-            transform.position += transform.forward * speed * Time.deltaTime;
+            bulletRigidbody.linearVelocity = transform.forward * speed;
         }
+
+        Destroy(gameObject, lifeTime);
     }
 
     void OnTriggerEnter(Collider other)
     {
-        // ignore collisions with owner
-        if (other.CompareTag(OwnerTag)) return;
+        if (hasHit || other.CompareTag(ownerTag)) return;
 
-        // player bullet hits turret
-        if (OwnerTag == "Player" && other.CompareTag("Turret"))
+        hasHit = true;
+        ProcessHit(other);
+        DestroyBullet();
+    }
+
+    void ProcessHit(Collider hitCollider)
+    {
+        if (!hitCollider.TryGetComponent<IDamageable>(out var damageable))
         {
-            TurretAI tc = other.GetComponentInParent<TurretAI>();
-            if (tc != null) tc.TakeDamage(damage);
-            Destroy(gameObject);
-            return;
+            damageable = hitCollider.GetComponentInParent<IDamageable>();
         }
 
-        // turret bullet hits player
-        if (OwnerTag == "Turret" && other.CompareTag("Player"))
+        if (damageable != null)
         {
-            PlayerController pc = other.GetComponent<PlayerController>();
-            if (pc != null) pc.ApplyDamage(damage);
-            Destroy(gameObject);
-            return;
+            damageable.TakeDamage(damage);
         }
 
-        // otherwise hit environment / other: destroy
+        if (impactEffect != null)
+        {
+            GameObject effect = Instantiate(impactEffect, transform.position, Quaternion.identity);
+            Destroy(effect, 2f);
+        }
+    }
+
+    void DestroyBullet()
+    {
         Destroy(gameObject);
     }
+
+    public void SetOwner(string owner)
+    {
+        ownerTag = owner;
+    }
+
+    public string GetOwner() => ownerTag;
+    public float GetDamage() => damage;
 }
