@@ -11,12 +11,12 @@ GameObject:
   - component: {fileID: 6729557635708198114}
   - component: {fileID: 3191876551138785477}
   - component: {fileID: 2384205612272188947}
-  - component: {fileID: 4383832752047146854}
   - component: {fileID: 5064569535500161172}
   - component: {fileID: 5700311439189260543}
+  - component: {fileID: 8857649496991072341}
   m_Layer: 0
   m_Name: PlayerBullet
-  m_TagString: Untagged
+  m_TagString: Projectile
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -89,34 +89,6 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!114 &4383832752047146854
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1616009234760516416}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9132a914c653740adafe45b3a6d94db9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  speed: 50
-  damage: 25
-  lifeTime: 5
-  useGravity: 0
-  impactEffect: {fileID: 0}
-  trailRenderer: {fileID: 0}
-  bulletLight: {fileID: 0}
-  flyingAudioSource: {fileID: 0}
-  targetTags:
-  - Turret
-  - Enemy
-  environmentTags:
-  - Ground
-  - Wall
-  - Environment
-  showDebugInfo: 0
 --- !u!136 &5064569535500161172
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -167,3 +139,18 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!114 &8857649496991072341
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1616009234760516416}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 65d47e87bb04b4f30bdd23549655330e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  damage: 25
+  lifeTime: 5
+  impactEffectPrefab: {fileID: 5418939302046321457, guid: c309441c31fdb4ee59f565432d03569b, type: 3}
