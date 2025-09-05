@@ -73,7 +73,6 @@ public class InfiniteTerrainGenerator : MonoBehaviour
 
         if (baseMaterial == null)
         {
-            Debug.LogWarning("[TerrainFixed] baseMaterial not set. Using default Standard shader.");
             baseMaterial = new Material(Shader.Find("Standard"));
         }
 
@@ -179,7 +178,6 @@ public class InfiniteTerrainGenerator : MonoBehaviour
                 {
                     Vector3 correctedPos = new Vector3(pos.x, groundHeight + vehicleSnapHeight * 0.5f, pos.z);
                     player.position = correctedPos;
-                    Debug.Log($"[TerrainFixed] Vehicle position corrected to: {correctedPos}");
                 }
             }
         }
@@ -188,7 +186,7 @@ public class InfiniteTerrainGenerator : MonoBehaviour
     float SampleTerrainHeight(float worldX, float worldZ)
     {
         float raw = FBM(worldX * noiseScale, worldZ * noiseScale);
-        float normalized = (raw / maxPossibleAmplitude) * 0.5f + 0.5f;
+        float normalized = raw / maxPossibleAmplitude * 0.5f + 0.5f;
         return Mathf.Clamp01(normalized) * heightMultiplier;
     }
 
@@ -317,7 +315,6 @@ public class InfiniteTerrainGenerator : MonoBehaviour
         // Final bounds check
         if (collider != null && collider.bounds.size.magnitude < 1f)
         {
-            Debug.LogWarning($"[TerrainFixed] Collider cooking issue detected, attempting refresh");
             collider.enabled = false;
             yield return null;
             collider.enabled = true;
@@ -353,7 +350,6 @@ public class InfiniteTerrainGenerator : MonoBehaviour
 
         if (buildTask.IsFaulted)
         {
-            Debug.LogError($"[TerrainFixed] Mesh build failed for chunk {coord}: {buildTask.Exception}");
             generatingChunks.Remove(coord);
             yield break;
         }
@@ -434,7 +430,7 @@ public class InfiniteTerrainGenerator : MonoBehaviour
                 float worldZ = chunkWz + z * step;
 
                 float rawNoise = FBM(worldX * noiseScale, worldZ * noiseScale);
-                float normalized = (rawNoise / maxPossibleAmplitude) * 0.5f + 0.5f;
+                float normalized = rawNoise / maxPossibleAmplitude * 0.5f + 0.5f;
                 normalized = Mathf.Clamp01(normalized);
 
                 normalizedNoise[index] = normalized;
