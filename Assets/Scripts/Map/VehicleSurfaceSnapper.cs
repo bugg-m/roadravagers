@@ -1,38 +1,34 @@
 using UnityEngine;
 
-/// <summary>
-/// Small helper: keeps a Rigidbody vehicle above procedural terrain using Noise sampler.
-/// Works even if collider not yet perfectly cooked. Gentle correction (not teleport).
-/// </summary>
 [RequireComponent(typeof(Rigidbody))]
 public class VehicleSurfaceSnapper : MonoBehaviour
 {
-    [SerializeField] private float verticalOffset = 0.7f;
-    [SerializeField] private float snapSpeed = 10f;
-    [SerializeField] private bool enableSnap = true;
+    [SerializeField] float _verticalOffset = 0.8f;
+    [SerializeField] float _snapSpeed = 10f;
+    [SerializeField] bool _enable = true;
 
-
-    Rigidbody rb;
+    Rigidbody _rb;
+    TerrainStreamController _controller;
 
     void Start()
     {
-        rb = GetComponent<Rigidbody>();
+        _rb = GetComponent<Rigidbody>();
+        _controller = FindFirstObjectByType<TerrainStreamController>();
     }
 
     void FixedUpdate()
     {
-        if (!enableSnap) return;
-        Vector3 pos = rb.position;
-        float ground = Noise.GetHeightAtWorldPos(pos.x, pos.z, FindFirstObjectByType<TerrainStreamer>()?.HeightMultiplier ?? 12f);
-        float desiredY = ground + verticalOffset;
-
+        if (!_enable || _rb == null) return;
+        Vector3 pos = _rb.position;
+        float hm = _controller != null ? _controller.HeightMultiplier : 12f;
+        float ground = NoiseProvider.GetHeight(pos.x, pos.z, hm);
+        float desiredY = ground + _verticalOffset;
         if (pos.y < desiredY)
         {
-            Vector3 newPos = Vector3.Lerp(pos, new Vector3(pos.x, desiredY, pos.z), Mathf.Clamp01(snapSpeed * Time.fixedDeltaTime));
-            rb.MovePosition(newPos);
-
-            Vector3 v = rb.linearVelocity;
-            if (v.y < 0f) { v.y = 0f; rb.linearVelocity = v; }
+            Vector3 newPos = Vector3.Lerp(pos, new Vector3(pos.x, desiredY, pos.z), Mathf.Clamp01(_snapSpeed * Time.fixedDeltaTime));
+            _rb.MovePosition(newPos);
+            var v = _rb.linearVelocity;
+            if (v.y < 0) { v.y = 0; _rb.linearVelocity = v; }
         }
     }
 }
