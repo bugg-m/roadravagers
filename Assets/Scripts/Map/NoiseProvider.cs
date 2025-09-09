@@ -65,7 +65,6 @@ public static class NoiseProvider
     public static float GetHeight(float worldX, float worldZ, float heightMultiplier)
         => GetNormalized(worldX, worldZ) * heightMultiplier;
 
-    // Expose octave offsets & max amp for thread builders (deterministic)
     public static Vector2[] GetOffsets() => s_octaveOffsets;
     public static float GetMaxPossibleAmplitude() => s_maxPossibleAmp;
 }

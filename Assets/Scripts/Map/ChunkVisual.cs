@@ -1,6 +1,3 @@
-// ChunkVisual.cs
-using System;
-using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
@@ -44,7 +41,6 @@ public class ChunkVisual : MonoBehaviour
             mesh.uv = uvs;
             mesh.RecalculateNormals();
 
-            // compute vertex colors using RegionData blending
             Color[] cols = new Color[verts.Length];
             for (int i = 0; i < verts.Length; i++)
             {

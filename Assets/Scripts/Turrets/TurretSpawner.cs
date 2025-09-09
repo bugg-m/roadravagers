@@ -1,5 +1,3 @@
-// TurretSpawner.cs
-// Deterministic turret placement per chunk; listens to OnChunkReady/OnChunkRemoved and pools turrets.
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -84,7 +82,6 @@ public class TurretSpawner : MonoBehaviour
             float wz = coord.y * _controller.ChunkSize + lz;
             float wy = NoiseProvider.GetHeight(wx, wz, _controller.HeightMultiplier);
 
-            // slope sample
             float h1 = NoiseProvider.GetHeight(wx + 0.5f, wz, _controller.HeightMultiplier);
             float h2 = NoiseProvider.GetHeight(wx - 0.5f, wz, _controller.HeightMultiplier);
             float h3 = NoiseProvider.GetHeight(wx, wz + 0.5f, _controller.HeightMultiplier);

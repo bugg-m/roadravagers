@@ -35,16 +35,13 @@ public class TerrainStreamController : MonoBehaviour
     [SerializeField] int _maxChunksPerFrame = 1;
     [SerializeField] int _maxConcurrentBuilds = 2;
 
-    // Events
     public event Action<ChunkInfo> OnChunkReady;
     public event Action<Vector2Int> OnChunkRemoved;
 
-    // Public read-only accessors
     public int Seed => _seed;
     public float HeightMultiplier => _heightMultiplier;
     public int ChunkSize => _chunkSize;
 
-    // internal
     readonly Dictionary<Vector2Int, ChunkInfo> _active = new Dictionary<Vector2Int, ChunkInfo>();
     readonly ConcurrentQueue<KeyValuePair<Vector2Int, ChunkMeshBuilder.MeshBuildResult>> _finishedQueue = new ConcurrentQueue<KeyValuePair<Vector2Int, ChunkMeshBuilder.MeshBuildResult>>();
     readonly HashSet<Vector2Int> _building = new HashSet<Vector2Int>();
@@ -65,7 +62,6 @@ public class TerrainStreamController : MonoBehaviour
     {
         if (_player == null) { Debug.LogError("[TerrainStreamController] Player not assigned."); enabled = false; return; }
 
-        // synchronous safety: ensure center chunk exists & collider to avoid falling
         _currentPlayerChunk = WorldToChunk(_player.position);
         GenerateAndApplyImmediate(_currentPlayerChunk);
 
@@ -181,9 +177,7 @@ public class TerrainStreamController : MonoBehaviour
     Vector2Int WorldToChunk(Vector3 pos) => new Vector2Int(Mathf.FloorToInt(pos.x / _chunkSize), Mathf.FloorToInt(pos.z / _chunkSize));
     long DistanceSquared(Vector2Int a, Vector2Int b) { long dx = (long)a.x - b.x; long dy = (long)a.y - b.y; return dx * dx + dy * dy; }
 
-    // simple height sampling (consistent with ChunkMeshBuilder)
     public float GetHeightAtWorldPos(float worldX, float worldZ) => NoiseProvider.GetHeight(worldX, worldZ, _heightMultiplier);
 
-    // public chunk info struct
     public struct ChunkInfo { public Vector2Int coord; public GameObject chunkObject; public ChunkMeshBuilder.MeshBuildResult meshBuild; }
 }

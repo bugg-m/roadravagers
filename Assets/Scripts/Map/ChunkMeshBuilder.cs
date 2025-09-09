@@ -6,9 +6,9 @@ public static class ChunkMeshBuilder
     public struct MeshBuildResult
     {
         public int vertsPerSide;
-        public float[] heights;      // vs*vs
-        public float[] normalized;   // vs*vs
-        public int[] triangles;      // grid triangles
+        public float[] heights;
+        public float[] normalized;
+        public int[] triangles;
         public float step;
     }
 

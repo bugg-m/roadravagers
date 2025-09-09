@@ -1,5 +1,3 @@
-// GameObjectPool.cs
-// Simple, reusable GameObject pool (turrets, bullets, etc.).
 using System.Collections.Generic;
 using UnityEngine;
 
