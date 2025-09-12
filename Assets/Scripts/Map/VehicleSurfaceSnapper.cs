@@ -3,32 +3,41 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody))]
 public class VehicleSurfaceSnapper : MonoBehaviour
 {
-    [SerializeField] float _verticalOffset = 0.8f;
-    [SerializeField] float _snapSpeed = 10f;
-    [SerializeField] bool _enable = true;
+    [SerializeField] bool enableSnap = false;
+    [SerializeField] float penetrationThreshold = 0.08f;
+    [SerializeField] float maxCorrectionPerSecond = 3f;
+    [SerializeField] float sampleYOffset = 0.5f;
 
-    Rigidbody _rb;
-    TerrainStreamController _controller;
+    Rigidbody rb;
 
-    void Start()
-    {
-        _rb = GetComponent<Rigidbody>();
-        _controller = FindFirstObjectByType<TerrainStreamController>();
-    }
+    void Awake() => rb = GetComponent<Rigidbody>();
 
     void FixedUpdate()
     {
-        if (!_enable || _rb == null) return;
-        Vector3 pos = _rb.position;
-        float hm = _controller != null ? _controller.HeightMultiplier : 12f;
-        float ground = NoiseProvider.GetHeight(pos.x, pos.z, hm);
-        float desiredY = ground + _verticalOffset;
-        if (pos.y < desiredY)
+        if (!enableSnap || rb == null) return;
+
+        Vector3 pos = rb.position;
+
+        Vector3 rayOrigin = pos + Vector3.up * 5f;
+        if (Physics.Raycast(rayOrigin, Vector3.down, out var hit, 20f))
         {
-            Vector3 newPos = Vector3.Lerp(pos, new Vector3(pos.x, desiredY, pos.z), Mathf.Clamp01(_snapSpeed * Time.fixedDeltaTime));
-            _rb.MovePosition(newPos);
-            var v = _rb.linearVelocity;
-            if (v.y < 0) { v.y = 0; _rb.linearVelocity = v; }
+            float groundY = hit.point.y;
+            float penetration = groundY - pos.y;
+            if (penetration > penetrationThreshold)
+            {
+                float desiredY = groundY + sampleYOffset;
+                float maxDelta = maxCorrectionPerSecond * Time.fixedDeltaTime;
+                float newY = Mathf.MoveTowards(pos.y, desiredY, maxDelta);
+                Vector3 newPos = new Vector3(pos.x, newY, pos.z);
+                rb.MovePosition(newPos);
+                if (rb.linearVelocity.y < -0.1f)
+                {
+                    var v = rb.linearVelocity;
+                    v.y = Mathf.Lerp(v.y, 0f, 0.3f);
+                    rb.linearVelocity = v;
+                }
+            }
         }
+
     }
 }

@@ -18,7 +18,6 @@ public class TerrainStreamController : MonoBehaviour
     [SerializeField] int _vertsNear = 33;
     [SerializeField] int _vertsFar = 17;
     [SerializeField] int _renderDistance = 2;
-    [SerializeField] int _colliderDistance = 1;
 
     [Header("Noise / Height")]
     [SerializeField] int _seed = 1337;
@@ -60,7 +59,7 @@ public class TerrainStreamController : MonoBehaviour
 
     void Start()
     {
-        if (_player == null) { Debug.LogError("[TerrainStreamController] Player not assigned."); enabled = false; return; }
+        if (_player == null) { enabled = false; return; }
 
         _currentPlayerChunk = WorldToChunk(_player.position);
         GenerateAndApplyImmediate(_currentPlayerChunk);

@@ -25,15 +25,20 @@ public class CarController : MonoBehaviour
     [Header("Physics")]
     [SerializeField] private Transform centerOfMass;
 
+    [Header("Firing")]
+    [SerializeField] private Camera playerCamera;
+    [SerializeField] private float fireRayDistance = 250f;
+
     private WeaponSystem weaponSystem;
     private HealthSystem healthSystem;
     private Rigidbody carRigidbody;
+
     private float horizontalInput;
     private float verticalInput;
-    private float currentSteerAngle;
-    private float currentBreakForce;
     private bool isBreaking;
     private bool fireInput;
+    private float currentSteerAngle;
+    private float currentBrakeForce;
     private float currentSpeed;
     private bool canMove = true;
 
@@ -55,8 +60,11 @@ public class CarController : MonoBehaviour
         }
         else
         {
-            carRigidbody.centerOfMass = new Vector3(0, -0.5f, 0.5f);
+            carRigidbody.centerOfMass = new Vector3(0f, -0.5f, 0.5f);
         }
+
+        if (playerCamera == null)
+            playerCamera = Camera.main;
     }
 
     void SubscribeToEvents()
@@ -68,16 +76,19 @@ public class CarController : MonoBehaviour
 
     void Update()
     {
-        if (!canMove) return;
         GetInput();
     }
 
     void FixedUpdate()
     {
-        if (!canMove) return;
-
-        currentSpeed = carRigidbody.linearVelocity.magnitude * 3.6f;
+        currentSpeed = carRigidbody != null ? carRigidbody.linearVelocity.magnitude * 3.6f : 0f;
         GameEvents.OnPlayerSpeedChanged?.Invoke(currentSpeed);
+
+        if (!canMove)
+        {
+            ZeroWheels();
+            return;
+        }
 
         HandleMotor();
         HandleSteering();
@@ -96,33 +107,53 @@ public class CarController : MonoBehaviour
 
     void HandleFireInput()
     {
-        if (fireInput)
+        if (!fireInput || weaponSystem == null) return;
+
+        if (playerCamera != null)
         {
-            weaponSystem.Fire();
+            Vector3 screenCenter = new Vector3(Screen.width * 0.5f, Screen.height * 0.5f, 0f);
+            Ray ray = playerCamera.ScreenPointToRay(screenCenter);
+            if (Physics.Raycast(ray, out RaycastHit hit, fireRayDistance))
+            {
+                Vector3 dir = (hit.point - transform.position).normalized;
+                weaponSystem.FireForward(transform.position + Vector3.up * 1.0f, dir, hit.distance);
+            }
+            else
+            {
+                Vector3 forwardOrigin = transform.position + transform.up * 1f + transform.forward * 1f;
+                Vector3 forwardDir = playerCamera.transform.forward;
+                weaponSystem.FireForward(forwardOrigin, forwardDir, fireRayDistance);
+            }
+        }
+        else
+        {
+            Vector3 forwardOrigin = transform.position + transform.up * 1f + transform.forward * 1f;
+            Vector3 forwardDir = transform.forward;
+            weaponSystem.FireForward(forwardOrigin, forwardDir, fireRayDistance);
         }
     }
 
     void HandleMotor()
     {
-        float motor = verticalInput * motorForce;
+        float motor = Mathf.Clamp(verticalInput, -1f, 1f) * motorForce;
         if (blWheel != null) blWheel.motorTorque = motor;
         if (brWheel != null) brWheel.motorTorque = motor;
     }
 
     void HandleSteering()
     {
-        currentSteerAngle = maxSteerAngle * horizontalInput;
+        currentSteerAngle = maxSteerAngle * Mathf.Clamp(horizontalInput, -1f, 1f);
         if (flWheel != null) flWheel.steerAngle = currentSteerAngle;
         if (frWheel != null) frWheel.steerAngle = currentSteerAngle;
     }
 
     void HandleBraking()
     {
-        currentBreakForce = isBreaking ? brakeForce : 0f;
-        if (flWheel != null) flWheel.brakeTorque = currentBreakForce;
-        if (frWheel != null) frWheel.brakeTorque = currentBreakForce;
-        if (blWheel != null) blWheel.brakeTorque = currentBreakForce;
-        if (brWheel != null) brWheel.brakeTorque = currentBreakForce;
+        currentBrakeForce = isBreaking ? brakeForce : 0f;
+        if (flWheel != null) flWheel.brakeTorque = currentBrakeForce;
+        if (frWheel != null) frWheel.brakeTorque = currentBrakeForce;
+        if (blWheel != null) blWheel.brakeTorque = currentBrakeForce;
+        if (brWheel != null) brWheel.brakeTorque = currentBrakeForce;
     }
 
     void UpdateWheelPoses()
@@ -135,19 +166,30 @@ public class CarController : MonoBehaviour
 
     void UpdateWheelPose(WheelCollider collider, Transform wheelTransform)
     {
-        if (collider != null && wheelTransform != null)
-        {
-            collider.GetWorldPose(out Vector3 pos, out Quaternion rot);
-            wheelTransform.position = pos;
-            wheelTransform.rotation = rot;
-        }
+        if (collider == null || wheelTransform == null) return;
+        collider.GetWorldPose(out Vector3 pos, out Quaternion rot);
+        wheelTransform.position = pos;
+        wheelTransform.rotation = rot;
+    }
+
+    void ZeroWheels()
+    {
+        if (flWheel != null) { flWheel.motorTorque = 0f; flWheel.brakeTorque = brakeForce; flWheel.steerAngle = 0f; }
+        if (frWheel != null) { frWheel.motorTorque = 0f; frWheel.brakeTorque = brakeForce; frWheel.steerAngle = 0f; }
+        if (blWheel != null) { blWheel.motorTorque = 0f; blWheel.brakeTorque = brakeForce; }
+        if (brWheel != null) { brWheel.motorTorque = 0f; brWheel.brakeTorque = brakeForce; }
     }
 
     void EnableMovement() => canMove = true;
-    void DisableMovement() => canMove = false;
+
+    void DisableMovement()
+    {
+        canMove = false;
+        ZeroWheels();
+    }
 
     public float GetCurrentSpeed() => currentSpeed;
-    public bool IsMoving() => carRigidbody.linearVelocity.magnitude > 0.1f;
+    public bool IsMoving() => carRigidbody != null && carRigidbody.linearVelocity.magnitude > 0.1f;
 
     void OnDestroy()
     {

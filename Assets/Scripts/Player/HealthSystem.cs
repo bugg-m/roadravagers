@@ -18,18 +18,28 @@ public class HealthSystem : MonoBehaviour, IDamageable
         }
     }
 
+    /// <summary>Pool-friendly reset: restore full health.</summary>
+    public void ResetHealth()
+    {
+        currentHealth = maxHealth;
+        if (isPlayer)
+        {
+            GameEvents.OnPlayerHealthChanged?.Invoke(currentHealth, maxHealth);
+        }
+    }
+
     public void TakeDamage(float damage)
     {
-        if (currentHealth <= 0) return;
+        if (currentHealth <= 0f) return;
 
-        currentHealth = Mathf.Clamp(currentHealth - damage, 0, maxHealth);
+        currentHealth = Mathf.Clamp(currentHealth - damage, 0f, maxHealth);
 
         if (isPlayer)
         {
             GameEvents.OnPlayerHealthChanged?.Invoke(currentHealth, maxHealth);
         }
 
-        if (currentHealth <= 0)
+        if (currentHealth <= 0f)
         {
             HandleDeath();
         }
@@ -37,9 +47,9 @@ public class HealthSystem : MonoBehaviour, IDamageable
 
     public void Heal(float healAmount)
     {
-        if (currentHealth <= 0) return;
+        if (currentHealth <= 0f) return;
 
-        currentHealth = Mathf.Clamp(currentHealth + healAmount, 0, maxHealth);
+        currentHealth = Mathf.Clamp(currentHealth + healAmount, 0f, maxHealth);
 
         if (isPlayer)
         {
@@ -64,4 +74,9 @@ public class HealthSystem : MonoBehaviour, IDamageable
     public float GetMaxHealth() => maxHealth;
     public bool IsDestroyed() => currentHealth <= 0;
     public float GetHealthPercentage() => currentHealth / maxHealth;
+
+    void OnDestroy()
+    {
+        // nothing extra to trim here (keeps behaviour predictable)
+    }
 }

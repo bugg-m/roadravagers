@@ -10,9 +10,9 @@ GameObject:
   m_Component:
   - component: {fileID: 629141465404198739}
   - component: {fileID: 1099852243957046482}
-  - component: {fileID: 6777823075764969837}
-  - component: {fileID: 4583737948516230708}
   - component: {fileID: -3984796628040546173}
+  - component: {fileID: 6147743539627114744}
+  - component: {fileID: 6064852414778863654}
   m_Layer: 0
   m_Name: Turret
   m_TagString: Untagged
@@ -46,52 +46,19 @@ MonoBehaviour:
   m_GameObject: {fileID: 278932114064280120}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 102c739cb4af94fe5bef15117f7df40c, type: 3}
+  m_Script: {fileID: 11500000, guid: 33c6f67d7fa1940afb11c2b20f9720ab, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  detectionRange: 30
-  rotationSpeed: 200
-  riseSpeed: 20
-  hiddenYOffset: -3
-  rotatingPart: {fileID: 2703082339783340899}
+  detectionRange: 28
+  firingRange: 16
+  riseDuration: 1
+  aimDuration: 0.5
+  gunPivot: {fileID: 2703082339783340899}
   firePoint: {fileID: 8508251296895133299}
---- !u!114 &6777823075764969837
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 278932114064280120}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0ec7b4ec6123d4294a2221e85854a2bc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  maxHealth: 50
-  isPlayer: 0
---- !u!114 &4583737948516230708
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 278932114064280120}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a1580d56a571944879b292ae8d2e5aa7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  bulletPrefab: {fileID: 4265212333472518594, guid: 10a6d94817d164126899234a8f9b2ad6, type: 3}
-  firePoints:
-  - {fileID: 8508251296895133299}
-  fireRate: 0.25
-  bulletSpeed: 100
-  ownerTag: Turret
-  useAmmo: 0
-  maxAmmo: 100
-  currentAmmo: 0
-  muzzleFlashes:
-  - {fileID: 2456199327927673281}
+  rotationSpeed: 160
+  hiddenYOffset: -3
+  requireLOS: 1
+  weaponSystem: {fileID: 6147743539627114744}
 --- !u!65 &-3984796628040546173
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -113,6 +80,48 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 2.0071206, y: 2.0884516, z: 2.0714388}
   m_Center: {x: 0.020554364, y: 1.0158881, z: 0.005922198}
+--- !u!114 &6147743539627114744
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 278932114064280120}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a1580d56a571944879b292ae8d2e5aa7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  firePoints:
+  - {fileID: 8508251296895133299}
+  rayRange: 60
+  targetMask:
+    serializedVersion: 2
+    m_Bits: 8
+  obstacleMask:
+    serializedVersion: 2
+    m_Bits: 119
+  fireRate: 1
+  muzzleVfxPrefab: {fileID: 7226583673155636401, guid: a2ab56839e1c9504ea9d141e95d0b16b, type: 3}
+  impactVfxPrefab: {fileID: 5024009746357069194, guid: ec3f674830402cc45bce805cf6493db7, type: 3}
+  damageVfxPrefab: {fileID: 2955623459812423943, guid: f5507a8c6a22c404ab324980c4e8a11b, type: 3}
+  impactVfxLifetime: 1.2
+  damagePerHit: 0.1
+  minDamageIntervalPerTarget: 0.06
+--- !u!114 &6064852414778863654
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 278932114064280120}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0ec7b4ec6123d4294a2221e85854a2bc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxHealth: 100
+  isPlayer: 0
 --- !u!1 &768961397115121260
 GameObject:
   m_ObjectHideFlags: 0

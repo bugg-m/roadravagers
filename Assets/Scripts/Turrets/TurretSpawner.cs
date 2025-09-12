@@ -1,107 +1,135 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class TurretSpawner : MonoBehaviour
 {
-    [SerializeField] TerrainStreamController _controller;
-    [SerializeField] GameObject _turretPrefab;
-    [SerializeField] Transform _parent;
-    [SerializeField, Range(0, 8)] int _turretsPerChunk = 3;
-    [SerializeField] float _minSpacing = 6f;
-    [SerializeField] float _maxSlope = 25f;
-    [SerializeField] int _initialPool = 32;
+    [SerializeField] private Transform player;
+    [SerializeField] private TurretPoolManager poolManager;
+    [SerializeField] private LayerMask groundMask = ~0;
+    [SerializeField] private float spawnRadius = 80f;
+    [SerializeField] private float spacing = 12f;
+    [SerializeField] private float spawnHeightOffset = 2f;
+    [SerializeField] private float maxSlopeDegrees = 35f;
+    [SerializeField] private float updateInterval = 0.6f;
+    [SerializeField] private int maxAttemptsPerCell = 6;
+    [SerializeField] private int rngSeed = 1234567;
 
-    GameObjectPool _pool;
-    readonly Dictionary<Vector2Int, List<GameObject>> _spawned = new Dictionary<Vector2Int, List<GameObject>>();
+    readonly Dictionary<Vector2Int, GameObject> active = new Dictionary<Vector2Int, GameObject>();
+    float timeAcc = 0f;
 
     void Awake()
     {
-        if (_controller == null) _controller = FindFirstObjectByType<TerrainStreamController>();
-        if (_controller == null) { Debug.LogError("TerrainStreamController not found"); enabled = false; return; }
-        if (_turretPrefab == null) { Debug.LogError("Turret prefab missing"); enabled = false; return; }
-
-        _pool = new GameObjectPool(_turretPrefab, _initialPool, _parent);
-    }
-
-    void OnEnable()
-    {
-        _controller.OnChunkReady += HandleChunkReady;
-        _controller.OnChunkRemoved += HandleChunkRemoved;
-    }
-
-    void OnDisable()
-    {
-        if (_controller != null)
+        if (player == null)
         {
-            _controller.OnChunkReady -= HandleChunkReady;
-            _controller.OnChunkRemoved -= HandleChunkRemoved;
+            var pgo = GameObject.FindGameObjectWithTag("Player");
+            if (pgo) player = pgo.transform;
+        }
+
+        if (poolManager == null)
+        {
+            poolManager = FindFirstObjectByType<TurretPoolManager>();
+        }
+
+        if (poolManager != null) poolManager.OnTurretReleased += OnTurretReleased;
+    }
+
+    void OnDestroy()
+    {
+        if (poolManager != null) poolManager.OnTurretReleased -= OnTurretReleased;
+    }
+
+    void Update()
+    {
+        if (player == null || poolManager == null) return;
+
+        timeAcc += Time.deltaTime;
+        if (timeAcc < updateInterval) return;
+        timeAcc = 0f;
+
+        Vector2Int center = WorldToCell(player.position);
+        int radiusCells = Mathf.CeilToInt(spawnRadius / spacing);
+
+        // spawn cells
+        for (int dz = -radiusCells; dz <= radiusCells; dz++)
+        {
+            for (int dx = -radiusCells; dx <= radiusCells; dx++)
+            {
+                var cell = center + new Vector2Int(dx, dz);
+                var worldCellCenter = CellToWorld(cell) + new Vector3(spacing * 0.5f, 0f, spacing * 0.5f);
+                float dist = Vector3.Distance(worldCellCenter.WithY(player.position.y), player.position);
+                if (dist > spawnRadius) continue;
+
+                if (!active.ContainsKey(cell))
+                {
+                    var p = FindSpawnPointInCell(cell, maxAttemptsPerCell);
+                    if (p.HasValue)
+                    {
+                        var go = poolManager.Spawn(p.Value, Quaternion.identity, cell);
+                        var turret = go.GetComponent<TurretAI>();
+                        turret?.OnSpawned(player);
+                        active[cell] = go;
+                    }
+                }
+            }
+        }
+
+        var toRemove = new List<Vector2Int>();
+        foreach (var kv in active)
+        {
+            var cell = kv.Key;
+            var worldCellCenter = CellToWorld(cell) + new Vector3(spacing * 0.5f, 0f, spacing * 0.5f);
+            float dist = Vector3.Distance(worldCellCenter.WithY(player.position.y), player.position);
+            if (dist > spawnRadius * 1.15f) toRemove.Add(cell);
+        }
+
+        foreach (var cell in toRemove)
+        {
+            if (active.TryGetValue(cell, out var turret))
+            {
+                var pt = turret.GetComponent<TurretAI>();
+                pt?.OnDespawned();
+                poolManager.Release(turret, cell);
+                active.Remove(cell);
+            }
         }
     }
 
-    void HandleChunkReady(TerrainStreamController.ChunkInfo info)
+    Vector3? FindSpawnPointInCell(Vector2Int cell, int attempts)
     {
-        var coord = info.coord;
-        if (_spawned.ContainsKey(coord)) return;
-
-        var placements = GeneratePositions(coord);
-        var list = new List<GameObject>(placements.Count);
-        foreach (var p in placements)
+        var rng = new System.Random(rngSeed ^ (cell.x * 73856093) ^ (cell.y * 19349663));
+        for (int i = 0; i < attempts; i++)
         {
-            var go = _pool.Get();
-            go.transform.position = p;
-            go.transform.rotation = Quaternion.identity;
-            if (_parent != null) go.transform.SetParent(_parent, true);
-            list.Add(go);
+            float rx = (float)rng.NextDouble() * spacing;
+            float rz = (float)rng.NextDouble() * spacing;
+            Vector3 pos = CellToWorld(cell) + new Vector3(rx, spawnHeightOffset, rz) + Vector3.up * 20f;
+            if (Physics.Raycast(pos, Vector3.down, out RaycastHit hit, 50f, groundMask))
+            {
+                float slope = Vector3.Angle(hit.normal, Vector3.up);
+                if (slope <= maxSlopeDegrees)
+                {
+                    return hit.point;
+                }
+            }
         }
-
-        _spawned[coord] = list;
+        return null;
     }
 
-    void HandleChunkRemoved(Vector2Int coord)
+    Vector2Int WorldToCell(Vector3 w)
     {
-        if (_spawned.TryGetValue(coord, out var list))
-        {
-            foreach (var go in list) _pool.Release(go);
-            _spawned.Remove(coord);
-        }
+        int cx = Mathf.FloorToInt(w.x / spacing);
+        int cz = Mathf.FloorToInt(w.z / spacing);
+        return new Vector2Int(cx, cz);
     }
 
-    List<Vector3> GeneratePositions(Vector2Int coord)
+    Vector3 CellToWorld(Vector2Int c) => new Vector3(c.x * spacing, 0f, c.y * spacing);
+
+    void OnTurretReleased(Vector2Int cell)
     {
-        var result = new List<Vector3>();
-        int localSeed = HashInts(_controller.Seed, coord.x, coord.y);
-        var rng = new System.Random(localSeed);
-        int attempts = 0;
-        while (result.Count < _turretsPerChunk && attempts < 64)
-        {
-            attempts++;
-            float lx = (float)rng.NextDouble() * _controller.ChunkSize;
-            float lz = (float)rng.NextDouble() * _controller.ChunkSize;
-            float wx = coord.x * _controller.ChunkSize + lx;
-            float wz = coord.y * _controller.ChunkSize + lz;
-            float wy = NoiseProvider.GetHeight(wx, wz, _controller.HeightMultiplier);
-
-            float h1 = NoiseProvider.GetHeight(wx + 0.5f, wz, _controller.HeightMultiplier);
-            float h2 = NoiseProvider.GetHeight(wx - 0.5f, wz, _controller.HeightMultiplier);
-            float h3 = NoiseProvider.GetHeight(wx, wz + 0.5f, _controller.HeightMultiplier);
-            float h4 = NoiseProvider.GetHeight(wx, wz - 0.5f, _controller.HeightMultiplier);
-            float dx = (h1 - h2);
-            float dz = (h3 - h4);
-            float slope = Mathf.Atan(Mathf.Sqrt(dx * dx + dz * dz)) * Mathf.Rad2Deg;
-            if (slope > _maxSlope) continue;
-
-            var pos = new Vector3(wx, wy, wz);
-            bool ok = true;
-            foreach (var ex in result) if (Vector3.Distance(ex, pos) < _minSpacing) { ok = false; break; }
-            if (!ok) continue;
-            result.Add(pos);
-        }
-        return result;
+        if (active.ContainsKey(cell)) active.Remove(cell);
     }
+}
 
-    static int HashInts(params int[] xs)
-    {
-        unchecked { int h = 17; foreach (var v in xs) h = h * 31 + v; return h; }
-    }
+static class Vec3Ext
+{
+    public static Vector3 WithY(this Vector3 v, float y) => new Vector3(v.x, y, v.z);
 }

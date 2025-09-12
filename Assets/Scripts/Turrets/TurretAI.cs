@@ -1,195 +1,235 @@
 using UnityEngine;
 using System.Collections;
 
-[RequireComponent(typeof(WeaponSystem))]
-[RequireComponent(typeof(HealthSystem))]
+/// <summary>
+/// Pooled turret AI with 6 phases:
+/// Hidden -> Arise -> Aim -> Idle -> Fire -> Destroyed (or Hiding -> Hidden)
+/// - OnSpawned(player) must be called right after pool.Spawn(...)
+/// - OnDespawned() must be called before pool.Release(...)
+/// - When MarkDestroyed() is called (e.g. HealthSystem), turret returns to pool via PoolOwner
+/// </summary>
+[RequireComponent(typeof(Collider))]
 public class TurretAI : MonoBehaviour
 {
-    [Header("Detection & Combat")]
-    [SerializeField] private float detectionRange = 15f;
-    [SerializeField] private float rotationSpeed = 90f;
+    // pool wiring
+    public TurretPoolManager PoolOwner { get; set; }
+    public Vector2Int CellCoord { get; set; }
 
-    [Header("Animation")]
-    [SerializeField] private float riseSpeed = 2f;
-    [SerializeField] private float hiddenYOffset = -2f;
+    [Header("Ranges & timings")]
+    [SerializeField] private float detectionRange = 28f;
+    [SerializeField] private float firingRange = 16f;
+    [SerializeField] private float riseDuration = 0.9f;
+    [SerializeField] private float aimDuration = 0.45f;
 
-    [Header("Components")]
-    [SerializeField] private Transform rotatingPart;
-    [SerializeField] private Transform firePoint;
+    [Header("Transforms")]
+    [SerializeField] private Transform gunPivot;          // rotates horizontally to aim
+    [SerializeField] private Transform firePoint;         // origin used by WeaponSystem
 
-    public enum TurretState { Hidden, Rising, Active, Hiding, Destroyed }
+    [Header("Motion")]
+    [SerializeField] private float rotationSpeed = 160f;
+    [SerializeField] private float hiddenYOffset = -1.6f;
 
-    private TurretState currentState = TurretState.Hidden;
-    private Transform playerTarget;
-    private Rigidbody playerRigidbody;
-    private Vector3 originalPosition;
-    private Vector3 hiddenPosition;
-    private WeaponSystem weaponSystem;
-    private HealthSystem healthSystem;
+    [Header("Firing gating")]
+    [SerializeField] private bool requireLOS = true;      // if true, turret checks LOS before firing
 
-    void Start()
+    [Header("References")]
+    [SerializeField] private WeaponSystem weaponSystem;   // must be on same prefab (auto assign in Awake)
+
+    // internal state
+    enum State { Hidden, Arise, Aim, Idle, Fire, Hiding, Destroyed }
+    State state = State.Hidden;
+
+    Transform player;
+    Vector3 originalPosition;
+    Vector3 hiddenPosition;
+
+    float stateTimer = 0f;
+    float fireCooldown = 0f;
+
+    Coroutine detectionCoroutine;
+
+    void Awake()
     {
-        Initialize();
+        if (gunPivot == null) gunPivot = transform;
+        if (firePoint == null) firePoint = gunPivot;
+        if (weaponSystem == null) weaponSystem = GetComponent<WeaponSystem>();
     }
 
-    void Initialize()
+    // Call after Spawn (poolManager.Spawn)
+    public void OnSpawned(Transform playerTransform)
     {
+        player = playerTransform;
         originalPosition = transform.position;
         hiddenPosition = originalPosition + Vector3.up * hiddenYOffset;
         transform.position = hiddenPosition;
 
-        weaponSystem = GetComponent<WeaponSystem>();
-        healthSystem = GetComponent<HealthSystem>();
+        state = State.Hidden;
+        stateTimer = 0f;
+        fireCooldown = 0f;
 
-        SetupComponents();
-        StartCoroutine(DetectionLoop());
+        weaponSystem?.ResetCooldown();
 
-        // Subscribe to health system death event instead of polling
-        if (healthSystem != null)
-        {
-            // Listen for when THIS specific turret dies via the GameEvents system
-            GameEvents.OnTurretDestroyed += OnAnyTurretDestroyed;
-        }
+        if (detectionCoroutine != null) StopCoroutine(detectionCoroutine);
+        detectionCoroutine = StartCoroutine(DetectionLoop());
     }
 
-    void OnAnyTurretDestroyed(Vector3 destroyedPosition)
+    // Call before returning to pool
+    public void OnDespawned()
     {
-        // Check if the destroyed turret is this turret (by position)
-        if (Vector3.Distance(transform.position, destroyedPosition) < 0.1f)
-        {
-            currentState = TurretState.Destroyed;
-            StopAllCoroutines();
-            Destroy(gameObject, 1f);
-        }
+        player = null;
+        if (detectionCoroutine != null) { StopCoroutine(detectionCoroutine); detectionCoroutine = null; }
+        transform.position = hiddenPosition;
+        state = State.Hidden;
     }
 
-    void SetupComponents()
+    /// <summary>
+    /// External call when turret is destroyed (health 0). Will notify PoolOwner to release it.
+    /// </summary>
+    public void MarkDestroyed()
     {
-        if (rotatingPart == null && transform.childCount > 0)
-            rotatingPart = transform.GetChild(0);
-    }
+        if (state == State.Destroyed) return;
+        state = State.Destroyed;
 
-    IEnumerator DetectionLoop()
-    {
-        while (currentState != TurretState.Destroyed)
-        {
-            if (currentState == TurretState.Hidden)
-                DetectPlayer();
-            else if (currentState == TurretState.Active)
-                CheckPlayerInRange();
-
-            yield return new WaitForSeconds(0.2f);
-        }
-    }
-
-    void DetectPlayer()
-    {
-        GameObject player = GameObject.FindGameObjectWithTag("Player");
-        if (player != null && Vector3.Distance(transform.position, player.transform.position) <= detectionRange)
-        {
-            playerTarget = player.transform;
-            playerRigidbody = playerTarget.GetComponent<Rigidbody>();
-            ActivateTurret();
-        }
-    }
-
-    void CheckPlayerInRange()
-    {
-        if (playerTarget == null || Vector3.Distance(transform.position, playerTarget.position) > detectionRange * 1.5f)
-        {
-            DeactivateTurret();
-        }
+        // optional: play destroy VFX / sound here
+        PoolOwner?.ReleaseFromTurret(gameObject, CellCoord);
     }
 
     void Update()
     {
-        HandleState();
-    }
+        if (state == State.Hidden || state == State.Destroyed) return;
 
-    void HandleState()
-    {
-        switch (currentState)
+        stateTimer -= Time.deltaTime;
+        fireCooldown -= Time.deltaTime;
+
+        switch (state)
         {
-            case TurretState.Rising:
-                HandleRising();
+            case State.Arise:
+                {
+                    float t = Mathf.Clamp01(1f - (stateTimer / riseDuration));
+                    transform.position = Vector3.Lerp(hiddenPosition, originalPosition, t);
+                    AimAtPlayerSmooth();
+                    if (stateTimer <= 0f)
+                    {
+                        state = State.Aim;
+                        stateTimer = aimDuration;
+                    }
+                }
                 break;
-            case TurretState.Active:
-                HandleActive();
+
+            case State.Aim:
+                AimAtPlayerSmooth();
+                if (stateTimer <= 0f) state = State.Idle;
                 break;
-            case TurretState.Hiding:
-                HandleHiding();
+
+            case State.Idle:
+                AimAtPlayerSmooth();
+                if (PlayerWithin(firingRange) && (!requireLOS || HasLineOfSight()))
+                {
+                    state = State.Fire;
+                    fireCooldown = 0f;
+                }
+                else if (!PlayerWithin(detectionRange * 1.2f))
+                {
+                    state = State.Hiding;
+                    stateTimer = riseDuration;
+                }
+                break;
+
+            case State.Fire:
+                AimAtPlayerSmooth();
+                if (PlayerWithin(firingRange) && (!requireLOS || HasLineOfSight()))
+                {
+                    // let WeaponSystem enforce cooldown internally
+                    if (weaponSystem != null)
+                    {
+                        weaponSystem.FireAt(player);
+                    }
+                }
+                else
+                {
+                    state = State.Idle; // player moved out of firing range or LOS lost
+                }
+
+                if (!PlayerWithin(detectionRange * 1.2f))
+                {
+                    state = State.Hiding;
+                    stateTimer = riseDuration;
+                }
+                break;
+
+            case State.Hiding:
+                {
+                    float tt = Mathf.Clamp01(1f - (stateTimer / riseDuration));
+                    transform.position = Vector3.Lerp(originalPosition, hiddenPosition, tt);
+                    if (stateTimer <= 0f)
+                    {
+                        state = State.Hidden;
+                        transform.position = hiddenPosition;
+                    }
+                }
                 break;
         }
     }
 
-    void ActivateTurret()
+    IEnumerator DetectionLoop()
     {
-        if (currentState == TurretState.Hidden)
-            currentState = TurretState.Rising;
-    }
-
-    void HandleRising()
-    {
-        transform.position = Vector3.MoveTowards(transform.position, originalPosition, riseSpeed * Time.deltaTime);
-        if (playerTarget != null) AimAtTarget();
-
-        if (Vector3.Distance(transform.position, originalPosition) < 0.1f)
+        var wait = new WaitForSeconds(0.18f);
+        while (true)
         {
-            transform.position = originalPosition;
-            currentState = TurretState.Active;
+            if (player == null)
+            {
+                yield return wait;
+                continue;
+            }
+
+            if (state == State.Hidden)
+            {
+                if (PlayerWithin(detectionRange))
+                {
+                    state = State.Arise;
+                    stateTimer = riseDuration;
+                }
+            }
+            else
+            {
+                if (!PlayerWithin(detectionRange * 1.2f) && state != State.Hiding && state != State.Hidden)
+                {
+                    state = State.Hiding;
+                    stateTimer = riseDuration;
+                }
+            }
+            yield return wait;
         }
     }
 
-    void HandleActive()
+    // helper checks
+    bool PlayerWithin(float r)
     {
-        if (playerTarget == null)
-        {
-            DeactivateTurret();
-            return;
-        }
-
-        AimAtTarget();
-
-        if (weaponSystem != null && weaponSystem.CanFire())
-        {
-            weaponSystem.Fire();
-        }
+        if (player == null) return false;
+        return (player.position - transform.position).sqrMagnitude <= (r * r);
     }
 
-    void AimAtTarget()
+    void AimAtPlayerSmooth()
     {
-        if (playerTarget == null || rotatingPart == null) return;
-
-        Vector3 direction = (playerTarget.position - rotatingPart.position).normalized;
-        direction.y = 0;
-
-        if (direction != Vector3.zero)
-        {
-            Quaternion targetRotation = Quaternion.LookRotation(direction);
-            rotatingPart.rotation = Quaternion.RotateTowards(rotatingPart.rotation, targetRotation, rotationSpeed * Time.deltaTime);
-        }
+        if (player == null || gunPivot == null) return;
+        Vector3 dir = player.position - gunPivot.position;
+        dir.y = 0f;
+        if (dir.sqrMagnitude < 1e-6f) return;
+        Quaternion tgt = Quaternion.LookRotation(dir.normalized, Vector3.up);
+        gunPivot.rotation = Quaternion.RotateTowards(gunPivot.rotation, tgt, rotationSpeed * Time.deltaTime);
     }
 
-    void HandleHiding()
+    bool HasLineOfSight()
     {
-        transform.position = Vector3.MoveTowards(transform.position, hiddenPosition, riseSpeed * Time.deltaTime);
-        if (Vector3.Distance(transform.position, hiddenPosition) < 0.1f)
-        {
-            transform.position = hiddenPosition;
-            currentState = TurretState.Hidden;
-            playerTarget = null;
-            playerRigidbody = null;
-        }
+        if (player == null || weaponSystem == null) return false;
+        // use weaponSystem's helper to avoid reflection
+        Vector3 origin = (firePoint != null) ? firePoint.position : gunPivot.position;
+        return weaponSystem.CanSee(origin, player);
     }
-
-    void DeactivateTurret()
+    // Called by external damage system when the turret is reduced to zero HP (for example)
+    public void ExternalDestroyed()
     {
-        if (currentState == TurretState.Active || currentState == TurretState.Rising)
-            currentState = TurretState.Hiding;
-    }
-
-    void OnDestroy()
-    {
-        GameEvents.OnTurretDestroyed -= OnAnyTurretDestroyed;
+        // optional explosion VFX / sound here
+        MarkDestroyed();
     }
 }
