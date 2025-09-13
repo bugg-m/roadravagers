@@ -159,6 +159,7 @@ MonoBehaviour:
   maxSlopeDegrees: 35
   updateInterval: 0.6
   maxAttemptsPerCell: 6
+  rngSeed: 1234567
 --- !u!4 &49421535
 Transform:
   m_ObjectHideFlags: 0
@@ -258,6 +259,8 @@ GameObject:
   - component: {fileID: 135803860}
   - component: {fileID: 135803862}
   - component: {fileID: 135803861}
+  - component: {fileID: 135803864}
+  - component: {fileID: 135803863}
   m_Layer: 3
   m_Name: Player
   m_TagString: Player
@@ -336,6 +339,8 @@ MonoBehaviour:
   blWheelTransform: {fileID: 4574993104465572}
   brWheelTransform: {fileID: 4889770745018892}
   centerOfMass: {fileID: 581099123}
+  playerCamera: {fileID: 330585545}
+  fireRayDistance: 250
 --- !u!114 &135803861
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -348,19 +353,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a1580d56a571944879b292ae8d2e5aa7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  bulletPrefab: {fileID: 1616009234760516416, guid: 20b7d2510ed51404299a3fb995742398, type: 3}
   firePoints:
   - {fileID: 527451571}
   - {fileID: 1903992789}
+  rayRange: 60
+  targetMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  obstacleMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
   fireRate: 0.25
-  bulletSpeed: 50
-  ownerTag: Player
-  useAmmo: 0
-  maxAmmo: 100
-  currentAmmo: 0
-  muzzleFlashes:
-  - {fileID: 144391814}
-  - {fileID: 1631545867130422488}
+  poolManagerName: VfxPoolManager
+  muzzlePoolObjectName: MuzzleVfxPool
+  impactPoolObjectName: ImpactVfxPool
+  damagePoolObjectName: DamageVfxPool
+  defaultMuzzleLifetime: 1.2
+  defaultImpactLifetime: 1.2
+  defaultDamageLifetime: 1.2
 --- !u!114 &135803862
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -375,6 +385,35 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxHealth: 100
   isPlayer: 1
+--- !u!114 &135803863
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 135803854}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 359c5fa0686ed4d7e86c46f12803aa06, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerRoot: {fileID: 135803854}
+  checkInterval: 0.25
+  autoRecover: 0
+  verbose: 1
+--- !u!114 &135803864
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 135803854}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f7e9352ea1e34211a3016bb6b88967c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  interval: 0.25
 --- !u!1 &144391813
 GameObject:
   m_ObjectHideFlags: 0
@@ -5372,7 +5411,7 @@ GameObject:
   - component: {fileID: 290992159}
   m_Layer: 0
   m_Name: Terrain
-  m_TagString: Untagged
+  m_TagString: Ground
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -6068,6 +6107,53 @@ Transform:
   m_Children: []
   m_Father: {fileID: 135803859}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &588181116
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 588181118}
+  - component: {fileID: 588181117}
+  m_Layer: 0
+  m_Name: VFXManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &588181117
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 588181116}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dc296bb934cf3450ba74af604ed19f45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!4 &588181118
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 588181116}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -116.472336, y: -19.908558, z: 70.3714}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 7224644277302509306}
+  - {fileID: 1161041499600126857}
+  - {fileID: 932382220988720522}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &645899119
 GameObject:
   m_ObjectHideFlags: 0
@@ -6659,9 +6745,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bcdab3f6c98894f8fabf2b97f1b50dbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  turretPrefab: {fileID: 278932114064280120, guid: 3f90733f84eb14432bcfd73577c0700b, type: 3}
+  turretPrefab: {fileID: 7133562893210962334, guid: 0976bc0afeb394c5b997ecbfbf8df838, type: 3}
   initialSize: 10
-  poolParent: {fileID: 49421535}
+  poolParent: {fileID: 1167468703}
 --- !u!4 &1167468703
 Transform:
   m_ObjectHideFlags: 0
@@ -6671,7 +6757,7 @@ Transform:
   m_GameObject: {fileID: 1167468701}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 28.53061, y: 10.800365, z: 167.88782}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -8021,6 +8107,66 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1128913308328518}
   m_Mesh: {fileID: 4300000, guid: e95a3bc9a4fe588418902cf9a698c651, type: 3}
+--- !u!114 &269650030804111161
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5246946873349395478}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f2f7b0762da24ababf90d60a1538c4c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  prefab: {fileID: 5024009746357069194, guid: ec3f674830402cc45bce805cf6493db7, type: 3}
+  initialSize: 8
+--- !u!1 &538078183380985765
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 7224644277302509306}
+  - component: {fileID: 6086357095533485100}
+  m_Layer: 0
+  m_Name: DamageVfxPool
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &932382220988720522
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7485074104439669200}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 132.47234, y: 25.32322, z: -54.3714}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 588181118}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1052517324181021132
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7485074104439669200}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f2f7b0762da24ababf90d60a1538c4c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  prefab: {fileID: 7226583673155636401, guid: a2ab56839e1c9504ea9d141e95d0b16b, type: 3}
+  initialSize: 8
 --- !u!1 &1111311957170939477
 GameObject:
   m_ObjectHideFlags: 0
@@ -8039,6 +8185,21 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!4 &1161041499600126857
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5246946873349395478}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 132.47234, y: 25.32322, z: -54.3714}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 588181118}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!198 &1631545867130422488
 ParticleSystem:
   m_ObjectHideFlags: 0
@@ -12855,6 +13016,37 @@ ParticleSystemRenderer:
   m_MeshWeighting2: 1
   m_MeshWeighting3: 1
   m_MaskInteraction: 0
+--- !u!1 &5246946873349395478
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1161041499600126857}
+  - component: {fileID: 269650030804111161}
+  m_Layer: 0
+  m_Name: ImpactVfxPool
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &6086357095533485100
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 538078183380985765}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f2f7b0762da24ababf90d60a1538c4c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  prefab: {fileID: 2955623459812423943, guid: f5507a8c6a22c404ab324980c4e8a11b, type: 3}
+  initialSize: 8
 --- !u!4 &7134679614132516075
 Transform:
   m_ObjectHideFlags: 0
@@ -12870,6 +13062,38 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1903992789}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!4 &7224644277302509306
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 538078183380985765}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 132.47234, y: 25.32322, z: -54.3714}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 588181118}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &7485074104439669200
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 932382220988720522}
+  - component: {fileID: 1052517324181021132}
+  m_Layer: 0
+  m_Name: MuzzleVfxPool
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
@@ -12885,3 +13109,4 @@ SceneRoots:
   - {fileID: 49421535}
   - {fileID: 1479137031}
   - {fileID: 1167468703}
+  - {fileID: 588181118}

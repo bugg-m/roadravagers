@@ -15,10 +15,9 @@ public class CameraFollow : MonoBehaviour
         target = GameObject.FindGameObjectWithTag("Player")?.transform;
     }
 
-
     void FixedUpdate()
     {
-        if (target == null) return;
+        if (target == null || cameraPoint == null) return;
 
         transform.position = Vector3.SmoothDamp(transform.position, cameraPoint.position, ref velocity, smoothSpeed);
 
@@ -26,7 +25,8 @@ public class CameraFollow : MonoBehaviour
         if (lookDirection != Vector3.zero)
         {
             Quaternion targetRotation = Quaternion.LookRotation(lookDirection);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, lookSmoothSpeed * Time.deltaTime);
+            // use fixedDeltaTime (we're in FixedUpdate) for consistent interpolation
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, lookSmoothSpeed * Time.fixedDeltaTime);
         }
     }
 }

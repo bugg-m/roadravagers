@@ -47,10 +47,11 @@ public class ChunkColliderManager : MonoBehaviour
         if (mc == null) mc = info.chunkObject.AddComponent<MeshCollider>();
 
         Mesh m = MeshPool.Get();
-        BuildColliderMesh(m, info.coord, _chunkSize, _colliderVertsPerSide, _smoothing, _controller.HeightMultiplier);
+        BuildColliderMesh(m, info.coord, _chunkSize, _colliderVertsPerSide, _smoothing, _controller != null ? _controller.HeightMultiplier : 1f);
         mc.sharedMesh = m;
         mc.convex = false;
-        Physics.SyncTransforms();
+
+        // Avoid calling Physics.SyncTransforms() here — heavy and can cause job/temporary allocation pressure.
     }
 
     static void BuildColliderMesh(Mesh mesh, Vector2Int coord, int chunkSize, int vs, float smoothing, float heightMultiplier)

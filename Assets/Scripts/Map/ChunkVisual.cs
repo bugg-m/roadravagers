@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
@@ -39,7 +41,10 @@ public class ChunkVisual : MonoBehaviour
             mesh.vertices = verts;
             mesh.triangles = r.triangles;
             mesh.uv = uvs;
-            mesh.RecalculateNormals();
+
+            // assign precomputed normals (no RecalculateNormals)
+            if (r.normals != null && r.normals.Length == verts.Length)
+                mesh.normals = r.normals;
 
             Color[] cols = new Color[verts.Length];
             for (int i = 0; i < verts.Length; i++)
@@ -50,46 +55,69 @@ public class ChunkVisual : MonoBehaviour
         }
         else
         {
+            // Flat shading: duplicate vertices per triangle and compute per-triangle normals
             int triCount = r.triangles.Length / 3;
             Vector3[] fVerts = new Vector3[triCount * 3];
             Vector2[] fUvs = new Vector2[triCount * 3];
             int[] fTris = new int[triCount * 3];
             Color[] cols = new Color[triCount * 3];
+            Vector3[] fNormals = new Vector3[triCount * 3];
 
             for (int t = 0; t < triCount; t++)
             {
-                int a = r.triangles[t * 3 + 0];
-                int b = r.triangles[t * 3 + 1];
-                int c = r.triangles[t * 3 + 2];
+                int ia = r.triangles[t * 3 + 0];
+                int ib = r.triangles[t * 3 + 1];
+                int ic = r.triangles[t * 3 + 2];
 
-                Vector3 va = new Vector3((a % vs) * step, r.heights[a], (a / vs) * step);
-                Vector3 vb = new Vector3((b % vs) * step, r.heights[b], (b / vs) * step);
-                Vector3 vc = new Vector3((c % vs) * step, r.heights[c], (c / vs) * step);
+                Vector3 va = new Vector3((ia % vs) * step, r.heights[ia], (ia / vs) * step);
+                Vector3 vb = new Vector3((ib % vs) * step, r.heights[ib], (ib / vs) * step);
+                Vector3 vc = new Vector3((ic % vs) * step, r.heights[ic], (ic / vs) * step);
 
-                fVerts[t * 3 + 0] = va; fVerts[t * 3 + 1] = vb; fVerts[t * 3 + 2] = vc;
-                fUvs[t * 3 + 0] = new Vector2((float)(a % vs) / (vs - 1), (float)(a / vs) / (vs - 1));
-                fUvs[t * 3 + 1] = new Vector2((float)(b % vs) / (vs - 1), (float)(b / vs) / (vs - 1));
-                fUvs[t * 3 + 2] = new Vector2((float)(c % vs) / (vs - 1), (float)(c / vs) / (vs - 1));
+                int o = t * 3;
+                fVerts[o + 0] = va;
+                fVerts[o + 1] = vb;
+                fVerts[o + 2] = vc;
 
-                cols[t * 3 + 0] = RegionData.EvaluateColor(regions, r.normalized[a]);
-                cols[t * 3 + 1] = RegionData.EvaluateColor(regions, r.normalized[b]);
-                cols[t * 3 + 2] = RegionData.EvaluateColor(regions, r.normalized[c]);
+                fUvs[o + 0] = new Vector2((float)(ia % vs) / (vs - 1), (float)(ia / vs) / (vs - 1));
+                fUvs[o + 1] = new Vector2((float)(ib % vs) / (vs - 1), (float)(ib / vs) / (vs - 1));
+                fUvs[o + 2] = new Vector2((float)(ic % vs) / (vs - 1), (float)(ic / vs) / (vs - 1));
 
-                fTris[t * 3 + 0] = t * 3 + 0;
-                fTris[t * 3 + 1] = t * 3 + 1;
-                fTris[t * 3 + 2] = t * 3 + 2;
+                Color ca = RegionData.EvaluateColor(regions, r.normalized[ia]);
+                Color cb = RegionData.EvaluateColor(regions, r.normalized[ib]);
+                Color cc = RegionData.EvaluateColor(regions, r.normalized[ic]);
+                cols[o + 0] = ca; cols[o + 1] = cb; cols[o + 2] = cc;
+
+                // compute flat normal
+                Vector3 triNormal = Vector3.Cross(vb - va, vc - va);
+                if (triNormal.sqrMagnitude > 1e-9f) triNormal.Normalize();
+                else triNormal = Vector3.up;
+
+                fNormals[o + 0] = triNormal;
+                fNormals[o + 1] = triNormal;
+                fNormals[o + 2] = triNormal;
+
+                fTris[o + 0] = o + 0;
+                fTris[o + 1] = o + 1;
+                fTris[o + 2] = o + 2;
             }
 
             mesh.indexFormat = fVerts.Length > 65000 ? UnityEngine.Rendering.IndexFormat.UInt32 : UnityEngine.Rendering.IndexFormat.UInt16;
             mesh.vertices = fVerts;
             mesh.triangles = fTris;
             mesh.uv = fUvs;
-            mesh.RecalculateNormals();
+            mesh.normals = fNormals; // precomputed
             mesh.colors = cols;
         }
 
+        // swap meshes (return previous to pool)
+        var previous = _mf.sharedMesh;
         _mf.sharedMesh = mesh;
         _mr.sharedMaterial = material;
+
+        if (previous != null && previous != mesh)
+        {
+            MeshPool.Release(previous);
+        }
     }
 
     void OnDestroy()

@@ -12,20 +12,25 @@ public class WeaponSystem : MonoBehaviour
     [SerializeField] private LayerMask targetMask = ~0;
     [SerializeField] private LayerMask obstacleMask = ~0;
 
-    [Header("Rate & VFX")]
+    [Header("Rate & Pools")]
     [SerializeField, Min(0.01f)] private float fireRate = 2f;
-    [SerializeField] private GameObject muzzleVfxPrefab;
-    [SerializeField] private GameObject impactVfxPrefab;
-    [SerializeField] private GameObject damageVfxPrefab;
-    [SerializeField] private float impactVfxLifetime = 1.2f;
 
-    [Header("Damage")]
-    [SerializeField] private float damagePerHit = 10f;
-    [SerializeField, Range(0.01f, 0.5f)] private float minDamageIntervalPerTarget = 0.06f;
+    [Header("Pool lookup (runtime)")]
+    [SerializeField] private string poolManagerName = "VfxPoolManager";
+    [SerializeField] private string muzzlePoolObjectName = "MuzzleVfxPool";
+    [SerializeField] private string impactPoolObjectName = "ImpactVfxPool";
+    [SerializeField] private string damagePoolObjectName = "DamageVfxPool";
+
+    [Header("VFX lifetimes")]
+    [SerializeField] private float defaultMuzzleLifetime = 1.2f;
+    [SerializeField] private float defaultImpactLifetime = 1.2f;
+    [SerializeField] private float defaultDamageLifetime = 1.2f;
 
     float nextFireTime = 0f;
 
-    static readonly Dictionary<int, float> s_lastDamagedTime = new Dictionary<int, float>();
+    private ParticleVfxPool muzzlePool;
+    private ParticleVfxPool impactPool;
+    private ParticleVfxPool damagePool;
 
     public float RayRange => rayRange;
     public LayerMask TargetMask => targetMask;
@@ -34,7 +39,7 @@ public class WeaponSystem : MonoBehaviour
 
     void Awake()
     {
-        if (firePoints == null || firePoints.Length == 0)
+        if ((firePoints == null || firePoints.Length == 0) && transform.childCount > 0)
         {
             var fp = transform.Find("FirePoints");
             if (fp != null)
@@ -42,6 +47,49 @@ public class WeaponSystem : MonoBehaviour
                 int c = fp.childCount;
                 firePoints = new Transform[c];
                 for (int i = 0; i < c; i++) firePoints[i] = fp.GetChild(i);
+            }
+        }
+    }
+
+    void Start()
+    {
+        ResolvePools();
+    }
+
+    void ResolvePools()
+    {
+        var manager = GameObject.Find(poolManagerName);
+        if (manager != null)
+        {
+            var cMuzzle = manager.transform.Find(muzzlePoolObjectName);
+            var cImpact = manager.transform.Find(impactPoolObjectName);
+            var cDamage = manager.transform.Find(damagePoolObjectName);
+
+            if (cMuzzle != null) muzzlePool = cMuzzle.GetComponent<ParticleVfxPool>();
+            if (cImpact != null) impactPool = cImpact.GetComponent<ParticleVfxPool>();
+            if (cDamage != null) damagePool = cDamage.GetComponent<ParticleVfxPool>();
+        }
+
+        if (muzzlePool == null || impactPool == null || damagePool == null)
+        {
+            var all = FindObjectsByType<ParticleVfxPool>(FindObjectsSortMode.None);
+            foreach (var p in all)
+            {
+                string n = p.gameObject.name.ToLowerInvariant();
+                if (muzzlePool == null && n.Contains("muzzle")) muzzlePool = p;
+                else if (impactPool == null && (n.Contains("impact") || n.Contains("hit"))) impactPool = p;
+                else if (damagePool == null && (n.Contains("damage") || n.Contains("hit"))) damagePool = p;
+            }
+        }
+
+        if (muzzlePool == null || impactPool == null || damagePool == null)
+        {
+            var all = FindObjectsByType<ParticleVfxPool>(FindObjectsSortMode.None);
+            if (all.Length > 0)
+            {
+                if (muzzlePool == null) muzzlePool = all[0];
+                if (impactPool == null && all.Length > 1) impactPool = all[Mathf.Min(1, all.Length - 1)];
+                if (damagePool == null && all.Length > 2) damagePool = all[Mathf.Min(2, all.Length - 1)];
             }
         }
     }
@@ -77,7 +125,8 @@ public class WeaponSystem : MonoBehaviour
             if (fp == null) continue;
             Vector3 dir = (target.position + Vector3.up * 0.5f) - fp.position;
             float dist = Mathf.Min(rayRange, dir.magnitude);
-            FireRayFromPoint(fp.position, dir.normalized, dist);
+            FireRayFromPoint(fp.position, dir.normalized, dist, true);
+            SpawnMuzzle(fp.position, Quaternion.LookRotation(dir.normalized));
         }
         return true;
     }
@@ -90,48 +139,86 @@ public class WeaponSystem : MonoBehaviour
         Vector3 dir = direction.normalized;
         float dist = (distance > 0f) ? Mathf.Min(distance, rayRange) : rayRange;
 
-        if (muzzleVfxPrefab != null)
-        {
-            var mv = Instantiate(muzzleVfxPrefab, origin, Quaternion.LookRotation(dir));
-            Destroy(mv, 2f);
-        }
-
-        FireRayFromPoint(origin, dir, dist);
+        SpawnMuzzle(origin, Quaternion.LookRotation(dir));
+        FireRayFromPoint(origin, dir, dist, false);
         return true;
     }
 
-    private void FireRayFromPoint(Vector3 origin, Vector3 direction, float dist)
+    private void FireRayFromPoint(Vector3 origin, Vector3 direction, float dist, bool inferTargetAsHit)
     {
         int mask = CombinedMask();
 
         if (Physics.Raycast(origin, direction, out RaycastHit hit, dist, mask))
         {
-            if (impactVfxPrefab != null)
-            {
-                var iv = Instantiate(impactVfxPrefab, hit.point, Quaternion.LookRotation(hit.normal));
-                Destroy(iv, impactVfxLifetime);
-            }
+            SpawnImpact(hit.point, Quaternion.LookRotation(hit.normal));
 
             var dmg = hit.collider.GetComponentInParent<IDamageable>();
             if (dmg != null)
             {
-                int id = hit.collider.gameObject.GetInstanceID();
-                float last = 0f;
-                s_lastDamagedTime.TryGetValue(id, out last);
-                if (Time.time - last >= minDamageIntervalPerTarget)
-                {
-                    s_lastDamagedTime[id] = Time.time;
-                    dmg.TakeDamage(damagePerHit);
-                    if (damageVfxPrefab != null)
-                    {
-                        var dv = Instantiate(damageVfxPrefab, hit.point, Quaternion.identity);
-                        Destroy(dv, impactVfxLifetime);
-                    }
-                }
+                // NOTE: this WeaponSystem no longer automatically applies damage by default
+                // to avoid interfering with your testing. If you want it to apply damage here,
+                // enable the lines below or call dmg.TakeDamage(damageAmount).
+                // dmg.TakeDamage(damageAmount);
+
+                // spawn damage VFX
+                SpawnDamage(hit.point, Quaternion.identity);
             }
+        }
+    }
+
+    #region VFX spawn helpers
+
+    void SpawnMuzzle(Vector3 pos, Quaternion rot)
+    {
+        if (muzzlePool != null)
+        {
+            if (muzzlePool.gameObject.activeInHierarchy)
+                muzzlePool.Spawn(pos, rot, defaultMuzzleLifetime);
+            else
+                TryDirectFallback(pos, rot, defaultMuzzleLifetime);
+        }
+        else
+        {
+            TryDirectFallback(pos, rot, defaultMuzzleLifetime);
+        }
+    }
+
+    void SpawnImpact(Vector3 pos, Quaternion rot)
+    {
+        if (impactPool != null)
+        {
+            if (impactPool.gameObject.activeInHierarchy)
+                impactPool.Spawn(pos, rot, defaultImpactLifetime);
+            else
+                TryDirectFallback(pos, rot, defaultImpactLifetime);
+        }
+        else
+        {
+            TryDirectFallback(pos, rot, defaultImpactLifetime);
+        }
+    }
+
+    void SpawnDamage(Vector3 pos, Quaternion rot)
+    {
+        if (damagePool != null)
+        {
+            if (damagePool.gameObject.activeInHierarchy)
+                damagePool.Spawn(pos, rot, defaultDamageLifetime);
+            else
+                TryDirectFallback(pos, rot, defaultDamageLifetime);
+        }
+        else
+        {
+            TryDirectFallback(pos, rot, defaultDamageLifetime);
         }
     }
 
     public bool CanFireNow() => Time.time >= nextFireTime;
     public void ResetCooldown() => nextFireTime = 0f;
+    void TryDirectFallback(Vector3 pos, Quaternion rot, float life)
+    {
+
+    }
+
+    #endregion
 }

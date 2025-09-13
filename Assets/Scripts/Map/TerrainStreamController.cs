@@ -164,14 +164,33 @@ public class TerrainStreamController : MonoBehaviour
             if (Mathf.Abs(c.x - center.x) > _renderDistance || Mathf.Abs(c.y - center.y) > _renderDistance) toRemove.Add(c);
         }
 
+        // Important: invoke OnChunkRemoved BEFORE destroying the GameObject so listeners
+        // can clear MeshCollider.sharedMesh and release Mesh instances back to pool safely.
         foreach (var coord in toRemove)
         {
-            var info = _active[coord];
-            if (info.chunkObject != null) Destroy(info.chunkObject);
-            _active.Remove(coord);
+            if (!_active.TryGetValue(coord, out var info)) continue;
+
+            // Notify listeners (collider manager, turret spawner, etc.) so they can clean up
             OnChunkRemoved?.Invoke(coord);
+
+            // Now safe to destroy the chunk's GameObject
+            if (info.chunkObject != null)
+            {
+                // Ensure we null out collider.sharedMesh just in case listeners missed it
+                var mc = info.chunkObject.GetComponent<MeshCollider>();
+                if (mc != null)
+                {
+                    // detach mesh - do NOT destroy mesh here; ChunkColliderManager is expected to release mesh
+                    mc.sharedMesh = null;
+                }
+
+                Destroy(info.chunkObject);
+            }
+
+            _active.Remove(coord);
         }
     }
+
 
     Vector2Int WorldToChunk(Vector3 pos) => new Vector2Int(Mathf.FloorToInt(pos.x / _chunkSize), Mathf.FloorToInt(pos.z / _chunkSize));
     long DistanceSquared(Vector2Int a, Vector2Int b) { long dx = (long)a.x - b.x; long dy = (long)a.y - b.y; return dx * dx + dy * dy; }

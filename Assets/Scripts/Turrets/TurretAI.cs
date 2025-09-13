@@ -139,8 +139,7 @@ public class TurretAI : MonoBehaviour
                 AimAtPlayerSmooth();
                 if (PlayerWithin(firingRange) && (!requireLOS || HasLineOfSight()))
                 {
-                    // let WeaponSystem enforce cooldown internally
-                    if (weaponSystem != null)
+                    if (weaponSystem != null && weaponSystem.CanFireNow())
                     {
                         weaponSystem.FireAt(player);
                     }
@@ -219,13 +218,24 @@ public class TurretAI : MonoBehaviour
         gunPivot.rotation = Quaternion.RotateTowards(gunPivot.rotation, tgt, rotationSpeed * Time.deltaTime);
     }
 
+    // inside TurretAI (replace HasLineOfSight and firing code block)
     bool HasLineOfSight()
     {
-        if (player == null || weaponSystem == null) return false;
-        // use weaponSystem's helper to avoid reflection
+        if (player == null) return false;
         Vector3 origin = (firePoint != null) ? firePoint.position : gunPivot.position;
-        return weaponSystem.CanSee(origin, player);
+        // use weaponSystem helper if available, otherwise do a local raycast
+        if (weaponSystem != null) return weaponSystem.CanSee(origin, player);
+        Vector3 dir = (player.position + Vector3.up * 0.5f) - origin;
+        float dist = Mathf.Min(60f, dir.magnitude + 0.5f);
+        if (Physics.Raycast(origin, dir.normalized, out RaycastHit hit, dist))
+        {
+            if (hit.collider != null && (hit.collider.transform == player || hit.collider.transform.IsChildOf(player)))
+                return true;
+            return false;
+        }
+        return true;
     }
+
     // Called by external damage system when the turret is reduced to zero HP (for example)
     public void ExternalDestroyed()
     {
