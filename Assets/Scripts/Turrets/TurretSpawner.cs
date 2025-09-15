@@ -49,7 +49,6 @@ public class TurretSpawner : MonoBehaviour
         Vector2Int center = WorldToCell(player.position);
         int radiusCells = Mathf.CeilToInt(spawnRadius / spacing);
 
-        // spawn cells
         for (int dz = -radiusCells; dz <= radiusCells; dz++)
         {
             for (int dx = -radiusCells; dx <= radiusCells; dx++)
@@ -64,7 +63,7 @@ public class TurretSpawner : MonoBehaviour
                     var p = FindSpawnPointInCell(cell, maxAttemptsPerCell);
                     if (p.HasValue)
                     {
-                        var go = poolManager.Spawn(p.Value, Quaternion.identity, cell);
+                        var go = poolManager.Spawn(p.Value, Quaternion.identity, cell, this.transform);
                         var turret = go.GetComponent<TurretAI>();
                         turret?.OnSpawned(player);
                         active[cell] = go;

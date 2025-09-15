@@ -3,9 +3,13 @@ using UnityEngine;
 
 public class TurretPoolManager : MonoBehaviour
 {
+    [Header("Pool")]
     [SerializeField] private GameObject turretPrefab;
     [SerializeField] private int initialSize = 24;
+
+    [Header("Parents (scene Transforms)")]
     [SerializeField] private Transform poolParent;
+    [SerializeField] private Transform defaultActiveParent;
 
     public event Action<Vector2Int> OnTurretReleased;
 
@@ -15,7 +19,7 @@ public class TurretPoolManager : MonoBehaviour
     {
         if (poolParent == null)
         {
-            var go = new GameObject("TurretPoolRoot");
+            var go = new GameObject("TurretPool");
             go.transform.SetParent(transform, false);
             poolParent = go.transform;
         }
@@ -23,15 +27,18 @@ public class TurretPoolManager : MonoBehaviour
         _pool = new GameObjectPool(turretPrefab, initialSize, poolParent);
     }
 
-    public GameObject Spawn(Vector3 pos, Quaternion rot, Vector2Int cell)
+    public GameObject Spawn(Vector3 pos, Quaternion rot, Vector2Int cell, Transform activeParent = null)
     {
-        var go = _pool.Get(pos, rot);
+        var chosenActiveParent = activeParent ?? defaultActiveParent;
+        var go = _pool.Get(pos, rot, chosenActiveParent);
+
         var pt = go.GetComponent<TurretAI>();
         if (pt != null)
         {
             pt.PoolOwner = this;
             pt.CellCoord = cell;
         }
+
         return go;
     }
 

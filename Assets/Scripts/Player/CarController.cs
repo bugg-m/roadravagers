@@ -1,7 +1,7 @@
 using UnityEngine;
 
 [RequireComponent(typeof(Rigidbody))]
-[RequireComponent(typeof(WeaponSystem))]
+[RequireComponent(typeof(RaycastWeaponSystem))]
 [RequireComponent(typeof(HealthSystem))]
 public class CarController : MonoBehaviour
 {
@@ -29,7 +29,7 @@ public class CarController : MonoBehaviour
     [SerializeField] private Camera playerCamera;
     [SerializeField] private float fireRayDistance = 250f;
 
-    private WeaponSystem weaponSystem;
+    private RaycastWeaponSystem weaponSystem;
     private HealthSystem healthSystem;
     private Rigidbody carRigidbody;
 
@@ -51,7 +51,7 @@ public class CarController : MonoBehaviour
     void Initialize()
     {
         carRigidbody = GetComponent<Rigidbody>();
-        weaponSystem = GetComponent<WeaponSystem>();
+        weaponSystem = GetComponent<RaycastWeaponSystem>();
         healthSystem = GetComponent<HealthSystem>();
 
         if (centerOfMass != null)
@@ -116,20 +116,20 @@ public class CarController : MonoBehaviour
             if (Physics.Raycast(ray, out RaycastHit hit, fireRayDistance))
             {
                 Vector3 dir = (hit.point - transform.position).normalized;
-                weaponSystem.FireForward(transform.position + Vector3.up * 1.0f, dir, hit.distance);
+                // weaponSystem.FireForward(transform.position + Vector3.up * 1.0f, dir, hit.distance);
             }
             else
             {
                 Vector3 forwardOrigin = transform.position + transform.up * 1f + transform.forward * 1f;
                 Vector3 forwardDir = playerCamera.transform.forward;
-                weaponSystem.FireForward(forwardOrigin, forwardDir, fireRayDistance);
+                // weaponSystem.FireForward(forwardOrigin, forwardDir, fireRayDistance);
             }
         }
         else
         {
             Vector3 forwardOrigin = transform.position + transform.up * 1f + transform.forward * 1f;
             Vector3 forwardDir = transform.forward;
-            weaponSystem.FireForward(forwardOrigin, forwardDir, fireRayDistance);
+            // weaponSystem.FireForward(forwardOrigin, forwardDir, fireRayDistance);
         }
     }
 

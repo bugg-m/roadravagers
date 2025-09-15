@@ -79,4 +79,11 @@ public class HealthSystem : MonoBehaviour, IDamageable
     {
         // nothing extra to trim here (keeps behaviour predictable)
     }
+
+    // Implementation of IDamageable.OnHit
+    public void OnHit(Vector3 hitPoint, Vector3 hitDirection)
+    {
+        // You can add custom logic here, e.g., play hit effects or apply damage
+        // For now, this is a placeholder implementation
+    }
 }
