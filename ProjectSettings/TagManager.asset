@@ -5,14 +5,16 @@ TagManager:
   serializedVersion: 3
   tags:
   - Turret
+  - Ground
+  - Projectile
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - 
+  - Player
   - Water
   - UI
-  - 
+  - Enemy
   - 
   - 
   - 
